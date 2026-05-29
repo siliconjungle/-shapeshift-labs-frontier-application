@@ -7,11 +7,11 @@
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/siliconjungle/siliconjungle--shapeshift-labs-frontier-application.git"
+    "url": "git+ssh://git@github.com/siliconjungle/-shapeshift-labs-frontier-application.git"
   },
-  "homepage": "https://github.com/siliconjungle/siliconjungle--shapeshift-labs-frontier-application#readme",
+  "homepage": "https://github.com/siliconjungle/-shapeshift-labs-frontier-application#readme",
   "bugs": {
-    "url": "https://github.com/siliconjungle/siliconjungle--shapeshift-labs-frontier-application/issues"
+    "url": "https://github.com/siliconjungle/-shapeshift-labs-frontier-application/issues"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
