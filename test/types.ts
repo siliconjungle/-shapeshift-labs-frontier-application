@@ -6,7 +6,7 @@ import {
   type FrontierApplicationAnswer,
   type FrontierApplicationGraph,
   type FrontierApplicationQueryResult
-} from '../src/index.js';
+} from '../src/index.ts';
 
 const graph: FrontierApplicationGraph = createApplicationGraph({
   nodes: [{
