@@ -202,6 +202,7 @@ npm install @shapeshift-labs/frontier-application
 ```ts
 import {
   affectedByStatePath,
+  affectedBySourceRegion,
   compileApplicationGraph,
   createApplicationGraph,
   featureTouches
@@ -214,6 +215,8 @@ const app = compileApplicationGraph(createApplicationGraph({
     feature: 'todos',
     routes: ['/todos'],
     actions: ['todos.complete'],
+    files: ['src/todos/TodosList.tsx'],
+    semanticRegions: ['src/todos/TodosList.tsx#view:TodosList.render'],
     writes: ['/entities/todos/t1/done'],
     effects: ['todos.sync'],
     tests: ['spec.todos.complete'],
@@ -224,16 +227,21 @@ const app = compileApplicationGraph(createApplicationGraph({
 
 const touched = featureTouches(app, 'todos');
 const impact = affectedByStatePath(app, '/entities/todos/t1/done');
+const sourceImpact = affectedBySourceRegion(app, 'src/todos/TodosList.tsx#view:TodosList.render');
 ```
 
 ## Surface
 
 - `createApplicationGraph`, `defineApplicationNode`, `compileApplicationGraph`, `validateApplicationGraph`, and `queryApplicationGraph` normalize and index application graph data.
-- `applicationImpact`, `featureTouches`, and `affectedByStatePath` answer broad impact questions from features, paths, files, resources, assets, tags, and explicit nodes.
+- `applicationImpact`, `featureTouches`, `affectedByStatePath`, `affectedBySourceFile`, and `affectedBySourceRegion` answer broad impact questions from features, paths, source files, semantic source regions, resources, assets, tags, and explicit nodes.
 - `allowedActionsForRoute`, `workflowsWritingStatePath`, `backgroundJobsForAsset`, `tracesForJourney`, and `benchmarksForHotPath` answer the concrete app-map questions Frontier apps need.
 - `answerApplicationQuestion` provides one structured answer shape for agent-facing queries.
 - `createApplicationGraphFromRegistryGraph` and `createApplicationGraphFromManifestLike` adapt existing Frontier-shaped data without importing manifest, inspect, trace, test, policy, workflow, or worker packages.
 - `createApplicationFeatureMap`, `createApplicationRegistryGraph`, `mergeApplicationGraphs`, `encodeApplicationJsonl`, `decodeApplicationJsonl`, and `createApplicationProof` support inspectable app maps and evidence bundles.
+
+## Agent Merge Admission
+
+Source-aware agents can attach `files` and `semanticRegions` to application nodes and evidence records. A semantic sidecar region such as `src/todos/TodosList.tsx#view:TodosList.render` can then be queried with `affectedBySourceRegion` or `answerApplicationQuestion(app, 'source-region-impact', regionId)` to recover the affected features, routes, tests, traces, and evidence before a coordinator admits or rejects a source-level patch.
 
 ## Application Graph Boundary
 

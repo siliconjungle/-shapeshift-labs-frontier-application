@@ -79,6 +79,8 @@ export type FrontierApplicationEdgeKind =
 
 export type FrontierApplicationQuestionKind =
   | 'feature-touches'
+  | 'source-file-impact'
+  | 'source-region-impact'
   | 'state-path-impact'
   | 'route-agent-actions'
   | 'workflows-writing-path'
@@ -86,6 +88,8 @@ export type FrontierApplicationQuestionKind =
   | 'traces-proving-journey'
   | 'benchmarks-protecting-hot-path'
   | string;
+
+export type FrontierApplicationSemanticRegionId = string;
 
 export interface FrontierApplicationNodeInput {
   id: string;
@@ -98,6 +102,7 @@ export interface FrontierApplicationNodeInput {
   owners?: readonly string[];
   source?: string | FrontierRegistrySource;
   files?: readonly string[];
+  semanticRegions?: readonly FrontierApplicationSemanticRegionId[];
   routes?: readonly string[];
   views?: readonly string[];
   actions?: readonly string[];
@@ -140,6 +145,7 @@ export interface FrontierApplicationNode {
   owners: string[];
   source?: FrontierRegistrySource;
   files: string[];
+  semanticRegions: string[];
   routes: string[];
   views: string[];
   actions: string[];
@@ -191,6 +197,8 @@ export interface FrontierApplicationEvidenceInput {
   sourcePackage?: string;
   nodes?: readonly string[];
   paths?: readonly FrontierRegistryPath[];
+  files?: readonly string[];
+  semanticRegions?: readonly FrontierApplicationSemanticRegionId[];
   features?: readonly string[];
   routes?: readonly string[];
   actions?: readonly string[];
@@ -208,6 +216,8 @@ export interface FrontierApplicationEvidence {
   sourcePackage?: string;
   nodes: string[];
   paths: string[];
+  files: string[];
+  semanticRegions: string[];
   features: string[];
   routes: string[];
   actions: string[];
@@ -258,6 +268,8 @@ export interface FrontierApplicationSummary {
   migrationCount: number;
   benchmarkCount: number;
   resourceCount: number;
+  sourceFileCount: number;
+  semanticRegionCount: number;
   warningCount: number;
   errorCount: number;
   kindCounts: Record<string, number>;
@@ -311,6 +323,7 @@ export interface FrontierCompiledApplicationGraph {
   nodeIdsByPackage: ReadonlyMap<string, readonly string[]>;
   nodeIdsByOwner: ReadonlyMap<string, readonly string[]>;
   nodeIdsByFile: ReadonlyMap<string, readonly string[]>;
+  nodeIdsBySemanticRegion: ReadonlyMap<string, readonly string[]>;
   nodeIdsByRoute: ReadonlyMap<string, readonly string[]>;
   nodeIdsByView: ReadonlyMap<string, readonly string[]>;
   nodeIdsByAction: ReadonlyMap<string, readonly string[]>;
@@ -330,6 +343,8 @@ export interface FrontierCompiledApplicationGraph {
   nodeIdsByTag: ReadonlyMap<string, readonly string[]>;
   evidenceByNode: ReadonlyMap<string, readonly string[]>;
   evidenceByPath: ReadonlyMap<string, readonly string[]>;
+  evidenceByFile: ReadonlyMap<string, readonly string[]>;
+  evidenceBySemanticRegion: ReadonlyMap<string, readonly string[]>;
   evidenceByFeature: ReadonlyMap<string, readonly string[]>;
   evidenceByTrace: ReadonlyMap<string, readonly string[]>;
   evidenceByBenchmark: ReadonlyMap<string, readonly string[]>;
@@ -344,6 +359,7 @@ export interface FrontierApplicationQueryInput {
   packages?: readonly string[];
   owners?: readonly string[];
   files?: readonly string[];
+  semanticRegions?: readonly FrontierApplicationSemanticRegionId[];
   routes?: readonly string[];
   views?: readonly string[];
   actions?: readonly string[];
@@ -377,6 +393,7 @@ export interface FrontierApplicationQueryResult {
 
 export interface FrontierApplicationImpactInput extends FrontierApplicationQueryInput {
   changedFiles?: readonly string[];
+  changedSemanticRegions?: readonly FrontierApplicationSemanticRegionId[];
   changedStatePaths?: readonly FrontierRegistryPath[];
   changedResources?: readonly string[];
   changedAssets?: readonly string[];
@@ -404,6 +421,8 @@ export interface FrontierApplicationImpact {
   features: string[];
   packages: string[];
   owners: string[];
+  files: string[];
+  semanticRegions: string[];
   routes: string[];
   views: string[];
   actions: string[];
@@ -436,6 +455,8 @@ export interface FrontierApplicationAnswer {
   summary: FrontierApplicationSummary;
   result: {
     features: string[];
+    files: string[];
+    semanticRegions: string[];
     routes: string[];
     views: string[];
     actions: string[];
@@ -465,6 +486,8 @@ export interface FrontierApplicationFeatureMap {
     nodeIds: string[];
     owners: string[];
     packages: string[];
+    files: string[];
+    semanticRegions: string[];
     routes: string[];
     views: string[];
     actions: string[];
@@ -543,6 +566,8 @@ export function compileApplicationGraph(graphOrInput: FrontierApplicationGraph |
   const maps = createIndexMaps();
   const evidenceByNode = new Map<string, string[]>();
   const evidenceByPath = new Map<string, string[]>();
+  const evidenceByFile = new Map<string, string[]>();
+  const evidenceBySemanticRegion = new Map<string, string[]>();
   const evidenceByFeature = new Map<string, string[]>();
   const evidenceByTrace = new Map<string, string[]>();
   const evidenceByBenchmark = new Map<string, string[]>();
@@ -555,6 +580,7 @@ export function compileApplicationGraph(graphOrInput: FrontierApplicationGraph |
     pushMap(maps.owner, node.owner, node.id);
     for (const owner of node.owners) pushMap(maps.owner, owner, node.id);
     indexValues(maps.file, node.files, node.id);
+    indexValues(maps.semanticRegion, node.semanticRegions, node.id);
     indexValues(maps.route, kindAwareValues(node, 'route', node.routes), node.id);
     indexValues(maps.view, kindAwareValues(node, 'view', node.views), node.id);
     indexValues(maps.action, kindAwareValues(node, 'action', node.actions), node.id);
@@ -580,6 +606,8 @@ export function compileApplicationGraph(graphOrInput: FrontierApplicationGraph |
   for (const item of graph.evidence) {
     for (const id of item.nodes) pushMap(evidenceByNode, id, item.id);
     for (const path of item.paths) pushMap(evidenceByPath, path, item.id);
+    for (const file of item.files) pushMap(evidenceByFile, file, item.id);
+    for (const region of item.semanticRegions) pushMap(evidenceBySemanticRegion, region, item.id);
     for (const feature of item.features) pushMap(evidenceByFeature, feature, item.id);
     for (const trace of item.traces) pushMap(evidenceByTrace, trace, item.id);
     for (const benchmark of item.benchmarks) pushMap(evidenceByBenchmark, benchmark, item.id);
@@ -597,6 +625,7 @@ export function compileApplicationGraph(graphOrInput: FrontierApplicationGraph |
     nodeIdsByPackage: maps.package,
     nodeIdsByOwner: maps.owner,
     nodeIdsByFile: maps.file,
+    nodeIdsBySemanticRegion: maps.semanticRegion,
     nodeIdsByRoute: maps.route,
     nodeIdsByView: maps.view,
     nodeIdsByAction: maps.action,
@@ -616,6 +645,8 @@ export function compileApplicationGraph(graphOrInput: FrontierApplicationGraph |
     nodeIdsByTag: maps.tag,
     evidenceByNode,
     evidenceByPath,
+    evidenceByFile,
+    evidenceBySemanticRegion,
     evidenceByFeature,
     evidenceByTrace,
     evidenceByBenchmark,
@@ -642,6 +673,7 @@ export function queryApplicationGraph(compiledOrGraph: FrontierCompiledApplicati
   ids = filterByMap(ids, query.packages, compiled.nodeIdsByPackage);
   ids = filterByMap(ids, query.owners, compiled.nodeIdsByOwner);
   ids = filterByMap(ids, query.files?.map(normalizeFilePath), compiled.nodeIdsByFile);
+  ids = filterByMap(ids, query.semanticRegions?.map(normalizeSemanticRegionId), compiled.nodeIdsBySemanticRegion);
   ids = filterByMap(ids, query.routes?.map(normalizeRoute), compiled.nodeIdsByRoute);
   ids = filterByMap(ids, query.views, compiled.nodeIdsByView);
   ids = filterByMap(ids, query.actions, compiled.nodeIdsByAction);
@@ -689,6 +721,12 @@ export function applicationImpact(compiledOrGraph: FrontierCompiledApplicationGr
   for (const file of input.changedFiles ?? []) {
     const normalized = normalizeFilePath(file);
     markMatches(seedSet, seeds, reasons, compiled.nodeIdsByFile, normalized, 'file', valueEquals, normalized);
+    markEvidenceMatches(compiled, seedSet, seeds, reasons, compiled.evidenceByFile, normalized, 'file-evidence', valueEquals, normalized);
+  }
+  for (const region of input.changedSemanticRegions ?? []) {
+    const normalized = normalizeSemanticRegionId(region);
+    markMatches(seedSet, seeds, reasons, compiled.nodeIdsBySemanticRegion, normalized, 'semantic-region', valueEquals, normalized);
+    markEvidenceMatches(compiled, seedSet, seeds, reasons, compiled.evidenceBySemanticRegion, normalized, 'semantic-region-evidence', valueEquals, normalized);
   }
   for (const path of input.changedStatePaths ?? []) {
     const normalized = normalizePath(path);
@@ -729,6 +767,8 @@ export function answerApplicationQuestion(compiledOrGraph: FrontierCompiledAppli
   const compiled = isCompiledApplicationGraph(compiledOrGraph) ? compiledOrGraph : compileApplicationGraph(compiledOrGraph);
   let impact: FrontierApplicationImpact;
   if (question === 'feature-touches') impact = applicationImpact(compiled, { features: [target], direction: 'both' });
+  else if (question === 'source-file-impact') impact = applicationImpact(compiled, { changedFiles: [target], direction: 'both' });
+  else if (question === 'source-region-impact') impact = applicationImpact(compiled, { changedSemanticRegions: [target], direction: 'both' });
   else if (question === 'state-path-impact') impact = applicationImpact(compiled, { changedStatePaths: [target], direction: 'both' });
   else if (question === 'route-agent-actions') impact = allowedActionsForRoute(compiled, target);
   else if (question === 'workflows-writing-path') impact = workflowsWritingStatePath(compiled, target);
@@ -750,6 +790,8 @@ export function answerApplicationQuestion(compiledOrGraph: FrontierCompiledAppli
     summary: summarizeApplicationParts(impact.nodes, impact.edges, impact.evidence, emptyValidation()),
     result: {
       features: values.features,
+      files: values.files,
+      semanticRegions: values.semanticRegions,
       routes: values.routes,
       views: values.views,
       actions: values.actions,
@@ -775,6 +817,14 @@ export function featureTouches(compiledOrGraph: FrontierCompiledApplicationGraph
 
 export function affectedByStatePath(compiledOrGraph: FrontierCompiledApplicationGraph | FrontierApplicationGraph | FrontierApplicationGraphInput, path: FrontierRegistryPath): FrontierApplicationImpact {
   return applicationImpact(compiledOrGraph, { changedStatePaths: [path], direction: 'both' });
+}
+
+export function affectedBySourceFile(compiledOrGraph: FrontierCompiledApplicationGraph | FrontierApplicationGraph | FrontierApplicationGraphInput, file: string): FrontierApplicationImpact {
+  return applicationImpact(compiledOrGraph, { changedFiles: [file], direction: 'both' });
+}
+
+export function affectedBySourceRegion(compiledOrGraph: FrontierCompiledApplicationGraph | FrontierApplicationGraph | FrontierApplicationGraphInput, semanticRegion: FrontierApplicationSemanticRegionId): FrontierApplicationImpact {
+  return applicationImpact(compiledOrGraph, { changedSemanticRegions: [semanticRegion], direction: 'both' });
 }
 
 export function allowedActionsForRoute(compiledOrGraph: FrontierCompiledApplicationGraph | FrontierApplicationGraph | FrontierApplicationGraphInput, route: string): FrontierApplicationImpact {
@@ -843,6 +893,8 @@ export function createApplicationFeatureMap(compiledOrGraph: FrontierCompiledApp
       nodeIds: impact.nodeIds,
       owners: impact.owners,
       packages: impact.packages,
+      files: impact.files,
+      semanticRegions: impact.semanticRegions,
       routes: impact.routes,
       views: impact.views,
       actions: impact.actions,
@@ -898,11 +950,12 @@ export function createApplicationRegistryGraph(compiledOrGraph: FrontierCompiled
     calls: node.actions.concat(node.mutations, node.effects, node.workers),
     dependsOn: node.dependsOn,
     affects: node.routes.concat(node.views, node.states, node.resources, node.assets),
+    touches: node.files.map((file) => 'source:' + file).concat(node.semanticRegions.map((region) => 'semantic-region:' + region)),
     produces: node.produces.concat(node.assets),
     consumes: node.consumes.concat(node.resources),
     covers: node.covers.concat(node.tests, node.benchmarks),
     tags: node.tags,
-    metadata: compactJsonObject({ applicationKind: node.kind, hotPaths: node.hotPaths, owners: node.owners })
+    metadata: compactJsonObject({ applicationKind: node.kind, files: node.files, semanticRegions: node.semanticRegions, hotPaths: node.hotPaths, owners: node.owners })
   }));
   const records: FrontierRegistryRecord[] = compiled.graph.evidence.flatMap((item) => item.nodes.map((nodeId) => ({
     id: item.id + ':' + nodeId,
@@ -911,8 +964,8 @@ export function createApplicationRegistryGraph(compiledOrGraph: FrontierCompiled
     status: item.status,
     startedAt: item.timestamp,
     reads: item.paths,
-    affected: item.features.concat(item.routes, item.actions, item.tests, item.traces, item.benchmarks),
-    metadata: item.metadata
+    affected: item.features.concat(item.routes, item.actions, item.tests, item.traces, item.benchmarks, item.files.map((file) => 'source:' + file), item.semanticRegions.map((region) => 'semantic-region:' + region)),
+    metadata: compactJsonObject({ ...(item.metadata ?? {}), files: item.files, semanticRegions: item.semanticRegions })
   })));
   const edges: FrontierRegistryEdge[] = compiled.graph.edges.map((edge) => ({ from: edge.from, to: edge.to, kind: edge.kind, metadata: edge.metadata }));
   return createFrontierRegistryGraph({
@@ -934,6 +987,8 @@ export function createApplicationGraphFromRegistryGraph(graph: FrontierRegistryG
     feature: entry.feature,
     owner: entry.owner,
     source: entry.source,
+    files: sourceFilesFromRegistryEntry(entry),
+    semanticRegions: semanticRegionsFromRegistryEntry(entry),
     states: normalizePathValues((entry.reads ?? []).concat(entry.writes ?? [])),
     reads: entry.reads,
     writes: entry.writes,
@@ -950,6 +1005,8 @@ export function createApplicationGraphFromRegistryGraph(graph: FrontierRegistryG
     kind: record.kind ?? 'registry-record',
     nodes: [record.entryId],
     paths: (record.reads ?? []).concat(record.writes ?? []),
+    files: sourceFilesFromRegistryRecord(record),
+    semanticRegions: semanticRegionsFromRegistryRecord(record),
     status: record.status,
     timestamp: record.startedAt,
     metadata: record.metadata
@@ -1028,6 +1085,7 @@ function normalizeNode(input: FrontierApplicationNodeInput): FrontierApplication
     owners,
     ...(input.source ? { source: normalizeSource(input.source) } : {}),
     files: uniqueStrings(input.files?.map(normalizeFilePath)),
+    semanticRegions: uniqueStrings(input.semanticRegions?.map(normalizeSemanticRegionId)),
     routes: uniqueStrings(input.routes?.map(normalizeRoute)),
     views: uniqueStrings(input.views),
     actions: uniqueStrings(input.actions),
@@ -1076,6 +1134,8 @@ function normalizeEvidence(input: FrontierApplicationEvidenceInput, index: numbe
     ...optionalString('sourcePackage', input.sourcePackage),
     nodes: uniqueStrings(input.nodes),
     paths: normalizePathValues(input.paths),
+    files: uniqueStrings(input.files?.map(normalizeFilePath)),
+    semanticRegions: uniqueStrings(input.semanticRegions?.map(normalizeSemanticRegionId)),
     features: uniqueStrings(input.features?.map(normalizeFeature)),
     routes: uniqueStrings(input.routes?.map(normalizeRoute)),
     actions: uniqueStrings(input.actions),
@@ -1095,6 +1155,7 @@ function deriveEdges(nodes: readonly FrontierApplicationNode[]): FrontierApplica
     if (node.package) out.push(edge(node.id, 'package:' + node.package, 'in-package'));
     for (const owner of node.owners) out.push(edge(node.id, 'owner:' + owner, 'owned-by'));
     for (const file of node.files) out.push(edge(node.id, 'source:' + file, 'declared-in'));
+    for (const region of node.semanticRegions) out.push(edge(node.id, 'semantic-region:' + region, 'declared-in'));
     for (const route of node.routes) out.push(edge(node.id, 'route:' + route, node.kind === 'view' ? 'renders' : 'touches'));
     for (const view of node.views) out.push(edge(node.id, 'view:' + view, node.kind === 'route' ? 'renders' : 'touches'));
     for (const action of node.actions.concat(node.tools)) out.push(edge(node.id, 'action:' + action, 'binds-action'));
@@ -1163,6 +1224,8 @@ function summarizeApplicationParts(nodes: readonly FrontierApplicationNode[], ed
     migrationCount: values.migrations.length,
     benchmarkCount: values.benchmarks.length,
     resourceCount: values.resources.length,
+    sourceFileCount: values.files.length,
+    semanticRegionCount: values.semanticRegions.length,
     warningCount: validation.issues.filter((issue) => issue.severity === 'warning').length,
     errorCount: validation.issues.filter((issue) => issue.severity === 'error').length,
     kindCounts
@@ -1174,6 +1237,8 @@ function collectApplicationValues(nodes: readonly FrontierApplicationNode[], evi
     features: uniqueStrings(nodes.flatMap((node) => [node.feature, ...(node.kind === 'feature' ? [stripPrefix(node.id, 'feature:')] : [])]).concat(evidence.flatMap((item) => item.features))),
     packages: uniqueStrings(nodes.flatMap((node) => [node.package])),
     owners: uniqueStrings(nodes.flatMap((node) => [node.owner, ...node.owners])),
+    files: uniqueStrings(nodes.flatMap((node) => node.files).concat(evidence.flatMap((item) => item.files))),
+    semanticRegions: uniqueStrings(nodes.flatMap((node) => node.semanticRegions).concat(evidence.flatMap((item) => item.semanticRegions))),
     routes: uniqueStrings(nodes.flatMap((node) => kindAwareValues(node, 'route', node.routes)).concat(evidence.flatMap((item) => item.routes))),
     views: uniqueStrings(nodes.flatMap((node) => kindAwareValues(node, 'view', node.views))),
     actions: uniqueStrings(nodes.flatMap((node) => kindAwareValues(node, 'action', node.actions.concat(node.tools))).concat(evidence.flatMap((item) => item.actions))),
@@ -1220,6 +1285,8 @@ function evidenceForNodes(compiled: FrontierCompiledApplicationGraph, nodes: rea
   for (const node of nodes) {
     for (const id of compiled.evidenceByNode.get(node.id) ?? []) ids.add(id);
     if (node.feature) for (const id of compiled.evidenceByFeature.get(node.feature) ?? []) ids.add(id);
+    for (const file of node.files) for (const id of compiled.evidenceByFile.get(file) ?? []) ids.add(id);
+    for (const region of node.semanticRegions) for (const id of compiled.evidenceBySemanticRegion.get(region) ?? []) ids.add(id);
     for (const path of node.states.concat(node.reads, node.writes)) {
       for (const [key, values] of compiled.evidenceByPath) if (pathsOverlap(key, path)) for (const id of values) ids.add(id);
     }
@@ -1236,6 +1303,7 @@ function createIndexMaps() {
     package: new Map<string, string[]>(),
     owner: new Map<string, string[]>(),
     file: new Map<string, string[]>(),
+    semanticRegion: new Map<string, string[]>(),
     route: new Map<string, string[]>(),
     view: new Map<string, string[]>(),
     action: new Map<string, string[]>(),
@@ -1268,6 +1336,7 @@ function nodeFromManifestEntry(entry: Record<string, unknown>): FrontierApplicat
     owners: readStringArray(entry.owners),
     source: readSource(entry.source),
     files: readStringArray(entry.files),
+    semanticRegions: readStringArray(entry.semanticRegions),
     routes: readStringArray(entry.routes),
     views: readStringArray(entry.views),
     actions: readStringArray(entry.actions),
@@ -1305,6 +1374,7 @@ function nodeFromManifestTask(task: Record<string, unknown>): FrontierApplicatio
     owner: readString(task.owner),
     owners: readStringArray(task.owners),
     files: readStringArray(task.inputs),
+    semanticRegions: readStringArray(task.semanticRegions),
     assets: readStringArray(task.outputs),
     workers: [id],
     dependsOn: readStringArray(task.dependsOn),
@@ -1346,6 +1416,10 @@ function normalizeFilePath(file: string): string {
   return String(file).replace(/\\/g, '/').replace(/^\.\/+/, '');
 }
 
+function normalizeSemanticRegionId(region: FrontierApplicationSemanticRegionId): string {
+  return stripPrefix(normalizeFilePath(region), 'semantic-region:');
+}
+
 function normalizeResource(resource: string): string {
   const value = String(resource);
   if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return value;
@@ -1363,7 +1437,7 @@ function resourceTarget(value: string): string {
 }
 
 function isSyntheticNode(id: string): boolean {
-  return /^(feature|package|owner|source|route|view|action|mutation|state|effect|worker|asset|resource|test|trace|policy|workflow|migration|benchmark):/.test(id);
+  return /^(feature|package|owner|source|semantic-region|route|view|action|mutation|state|effect|worker|asset|resource|test|trace|policy|workflow|migration|benchmark):/.test(id);
 }
 
 function nodeMatchesText(node: FrontierApplicationNode, text: string): boolean {
@@ -1374,6 +1448,8 @@ function nodeMatchesText(node: FrontierApplicationNode, text: string): boolean {
     description: node.description,
     feature: node.feature,
     package: node.package,
+    files: node.files,
+    semanticRegions: node.semanticRegions,
     tags: node.tags
   }).toLowerCase().includes(text);
 }
@@ -1390,6 +1466,37 @@ function markMatches(seedSet: Set<string>, seeds: string[], reasons: FrontierApp
   for (const [key, ids] of map) {
     if (!matcher(key, target)) continue;
     for (const id of ids) markSeed(seedSet, seeds, reasons, id, kind, via);
+  }
+}
+
+function markEvidenceMatches(compiled: FrontierCompiledApplicationGraph, seedSet: Set<string>, seeds: string[], reasons: FrontierApplicationImpactReason[], map: ReadonlyMap<string, readonly string[]>, target: string, kind: string, matcher: (left: string, right: string) => boolean, via: string): void {
+  const evidenceIds = new Set<string>();
+  for (const [key, ids] of map) {
+    if (!matcher(key, target)) continue;
+    for (const id of ids) evidenceIds.add(id);
+  }
+  if (evidenceIds.size === 0) return;
+  for (const item of compiled.graph.evidence) {
+    if (!evidenceIds.has(item.id)) continue;
+    for (const nodeId of item.nodes) markSeed(seedSet, seeds, reasons, nodeId, kind, via);
+    for (const feature of item.features) {
+      for (const nodeId of compiled.nodeIdsByFeature.get(feature) ?? []) markSeed(seedSet, seeds, reasons, nodeId, kind, via);
+    }
+    for (const route of item.routes) {
+      for (const nodeId of compiled.nodeIdsByRoute.get(route) ?? []) markSeed(seedSet, seeds, reasons, nodeId, kind, via);
+    }
+    for (const action of item.actions) {
+      for (const nodeId of compiled.nodeIdsByAction.get(action) ?? []) markSeed(seedSet, seeds, reasons, nodeId, kind, via);
+    }
+    for (const test of item.tests) {
+      for (const nodeId of compiled.nodeIdsByTest.get(test) ?? []) markSeed(seedSet, seeds, reasons, nodeId, kind, via);
+    }
+    for (const trace of item.traces) {
+      for (const nodeId of compiled.nodeIdsByTrace.get(trace) ?? []) markSeed(seedSet, seeds, reasons, nodeId, kind, via);
+    }
+    for (const benchmark of item.benchmarks) {
+      for (const nodeId of compiled.nodeIdsByBenchmark.get(benchmark) ?? []) markSeed(seedSet, seeds, reasons, nodeId, kind, via);
+    }
   }
 }
 
@@ -1413,6 +1520,7 @@ function hasApplicationQueryFields(input: FrontierApplicationQueryInput): boolea
     || hasValues(input.packages)
     || hasValues(input.owners)
     || hasValues(input.files)
+    || hasValues(input.semanticRegions)
     || hasValues(input.routes)
     || hasValues(input.views)
     || hasValues(input.actions)
@@ -1508,6 +1616,54 @@ function readSource(value: unknown): FrontierRegistrySource | undefined {
   if (typeof value === 'string') return { file: value };
   if (value && typeof value === 'object') return value as FrontierRegistrySource;
   return undefined;
+}
+
+function sourceFilesFromRegistryEntry(entry: FrontierRegistryEntry): string[] {
+  return uniqueStrings(sourceFilesFromSource(entry.source)
+    .concat(sourceFilesFromReferences(entry.touches))
+    .concat(readMetadataStringArray(entry.metadata, 'files').map(normalizeFilePath)));
+}
+
+function sourceFilesFromRegistryRecord(record: FrontierRegistryRecord): string[] {
+  return uniqueStrings(sourceFilesFromReferences(record.affected)
+    .concat(readMetadataStringArray(record.metadata, 'files').map(normalizeFilePath)));
+}
+
+function sourceFilesFromSource(source: FrontierRegistrySource | undefined): string[] {
+  if (!source) return [];
+  const locations = Array.isArray(source) ? source : [source];
+  return uniqueStrings(locations.map((location) => normalizeFilePath(location.file)));
+}
+
+function sourceFilesFromReferences(values: readonly string[] | undefined): string[] {
+  return uniqueStrings((values ?? []).map(readSourceFileReference));
+}
+
+function semanticRegionsFromRegistryEntry(entry: FrontierRegistryEntry): string[] {
+  return uniqueStrings(semanticRegionsFromReferences(entry.touches)
+    .concat(readMetadataStringArray(entry.metadata, 'semanticRegions').map(normalizeSemanticRegionId)));
+}
+
+function semanticRegionsFromRegistryRecord(record: FrontierRegistryRecord): string[] {
+  return uniqueStrings(semanticRegionsFromReferences(record.affected)
+    .concat(readMetadataStringArray(record.metadata, 'semanticRegions').map(normalizeSemanticRegionId)));
+}
+
+function semanticRegionsFromReferences(values: readonly string[] | undefined): string[] {
+  return uniqueStrings((values ?? []).map(readSemanticRegionReference));
+}
+
+function readSourceFileReference(value: string): string | undefined {
+  return value.startsWith('source:') ? normalizeFilePath(value.slice('source:'.length)) : undefined;
+}
+
+function readSemanticRegionReference(value: string): string | undefined {
+  return value.startsWith('semantic-region:') ? normalizeSemanticRegionId(value) : undefined;
+}
+
+function readMetadataStringArray(metadata: JsonObject | undefined, key: string): string[] {
+  const value = metadata?.[key];
+  return Array.isArray(value) ? uniqueStrings(value.filter((item): item is string => typeof item === 'string')) : [];
 }
 
 function optionalString<Key extends string>(key: Key, value: string | undefined): { [K in Key]?: string } {

@@ -1,6 +1,8 @@
 import assert from 'node:assert';
 import {
   affectedByStatePath,
+  affectedBySourceFile,
+  affectedBySourceRegion,
   allowedActionsForRoute,
   answerApplicationQuestion,
   applicationImpact,
@@ -23,6 +25,9 @@ import {
   validateApplicationGraph,
   workflowsWritingStatePath
 } from '../dist/index.js';
+
+const sourceFile = 'src/todos/TodosList.tsx';
+const sourceRegion = 'src/todos/TodosList.tsx#view:TodosList.render';
 
 const graph = createApplicationGraph({
   id: 'app.graph',
@@ -57,6 +62,8 @@ const graph = createApplicationGraph({
       feature: 'todos',
       views: ['todos.list'],
       actions: ['todos.complete'],
+      files: [sourceFile],
+      semanticRegions: [sourceRegion],
       reads: ['/entities/todos'],
       tests: ['spec.todos.complete']
     },
@@ -134,6 +141,16 @@ const graph = createApplicationGraph({
       status: 'ok'
     },
     {
+      id: 'semantic-import:todos-list',
+      kind: 'semantic-source',
+      nodes: ['view:todos.list'],
+      files: [sourceFile],
+      semanticRegions: [sourceRegion],
+      features: ['todos'],
+      tests: ['spec.todos.complete'],
+      status: 'ok'
+    },
+    {
       id: 'bench-run:1',
       kind: 'benchmark',
       nodes: ['benchmark:bench.todos.render'],
@@ -151,15 +168,28 @@ const compiled = compileApplicationGraph(graph);
 assert.strictEqual(compiled.get('action:todos.complete').kind, 'action');
 assert.deepStrictEqual(queryApplicationGraph(compiled, { routes: ['/todos'], kinds: ['route'] }).nodeIds, ['route:/todos']);
 assert.ok(queryApplicationGraph(compiled, { states: ['/entities/todos/t1'] }).nodeIds.includes('action:todos.complete'));
+assert.ok(queryApplicationGraph(compiled, { semanticRegions: [sourceRegion] }).nodeIds.includes('view:todos.list'));
 
 const feature = featureTouches(compiled, 'todos');
 assert.ok(feature.actions.includes('todos.complete'));
 assert.ok(feature.routes.includes('/todos'));
 assert.ok(feature.benchmarks.includes('bench.todos.render'));
+assert.ok(feature.files.includes(sourceFile));
+assert.ok(feature.semanticRegions.includes(sourceRegion));
 
 const pathImpact = affectedByStatePath(compiled, '/entities/todos/t1/done');
 assert.ok(pathImpact.nodeIds.includes('action:todos.complete'));
 assert.ok(pathImpact.nodeIds.includes('view:todos.list'));
+
+const sourceFileImpact = affectedBySourceFile(compiled, './src/todos/TodosList.tsx');
+assert.ok(sourceFileImpact.nodeIds.includes('view:todos.list'));
+assert.ok(sourceFileImpact.evidence.some((item) => item.id === 'semantic-import:todos-list'));
+
+const sourceRegionImpact = affectedBySourceRegion(compiled, sourceRegion);
+assert.ok(sourceRegionImpact.features.includes('todos'));
+assert.ok(sourceRegionImpact.files.includes(sourceFile));
+assert.ok(sourceRegionImpact.semanticRegions.includes(sourceRegion));
+assert.ok(sourceRegionImpact.evidence.some((item) => item.id === 'semantic-import:todos-list'));
 
 assert.ok(allowedActionsForRoute(compiled, '/todos').actions.includes('todos.complete'));
 assert.ok(workflowsWritingStatePath(compiled, '/entities/todos/t1/done').workflows.includes('workflow.onboarding'));
@@ -169,14 +199,20 @@ assert.ok(benchmarksForHotPath(compiled, 'todos.complete.latency').benchmarks.in
 
 const answer = answerApplicationQuestion(compiled, 'state-path-impact', '/entities/todos/t1/done');
 assert.ok(answer.result.workflows.includes('workflow.onboarding'));
+const sourceRegionAnswer = answerApplicationQuestion(compiled, 'source-region-impact', sourceRegion);
+assert.ok(sourceRegionAnswer.result.features.includes('todos'));
+assert.ok(sourceRegionAnswer.evidence.some((item) => item.id === 'semantic-import:todos-list'));
 
 const featureMap = createApplicationFeatureMap(compiled);
 assert.strictEqual(featureMap.features[0].id, 'todos');
 
 const registry = createApplicationRegistryGraph(compiled);
 assert.ok(registry.entries.some((entry) => entry.id === 'action:todos.complete'));
+assert.ok(registry.entries.some((entry) => entry.touches?.includes('semantic-region:' + sourceRegion)));
 const fromRegistry = createApplicationGraphFromRegistryGraph(registry, { id: 'from.registry' });
 assert.ok(fromRegistry.nodes.some((node) => node.id === 'action:todos.complete'));
+assert.ok(fromRegistry.nodes.some((node) => node.id === 'view:todos.list' && node.files.includes(sourceFile) && node.semanticRegions.includes(sourceRegion)));
+assert.ok(fromRegistry.evidence.some((item) => item.id === 'semantic-import:todos-list:view:todos.list' && item.semanticRegions.includes(sourceRegion)));
 
 const fromManifest = createApplicationGraphFromManifestLike({
   entries: [{
