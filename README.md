@@ -236,12 +236,19 @@ const sourceImpact = affectedBySourceRegion(app, 'src/todos/TodosList.tsx#view:T
 - `applicationImpact`, `featureTouches`, `affectedByStatePath`, `affectedBySourceFile`, and `affectedBySourceRegion` answer broad impact questions from features, paths, source files, semantic source regions, resources, assets, tags, and explicit nodes.
 - `allowedActionsForRoute`, `workflowsWritingStatePath`, `backgroundJobsForAsset`, `tracesForJourney`, and `benchmarksForHotPath` answer the concrete app-map questions Frontier apps need.
 - `answerApplicationQuestion` provides one structured answer shape for agent-facing queries.
+- `createApplicationOperatorStateView` builds a human-first operator dashboard shape with current goal, progress ratio, active agents, current tasks, human questions, quality gates, performance/cost summary, and history graph references.
 - `createApplicationGraphFromRegistryGraph` and `createApplicationGraphFromManifestLike` adapt existing Frontier-shaped data without importing manifest, inspect, trace, test, policy, workflow, or worker packages.
 - `createApplicationFeatureMap`, `createApplicationRegistryGraph`, `mergeApplicationGraphs`, `encodeApplicationJsonl`, `decodeApplicationJsonl`, and `createApplicationProof` support inspectable app maps and evidence bundles.
 
 ## Agent Merge Admission
 
 Source-aware agents can attach `files` and `semanticRegions` to application nodes and evidence records. A semantic sidecar region such as `src/todos/TodosList.tsx#view:TodosList.render` can then be queried with `affectedBySourceRegion` or `answerApplicationQuestion(app, 'source-region-impact', regionId)` to recover the affected features, routes, tests, traces, and evidence before a coordinator admits or rejects a source-level patch.
+
+## Operator State View
+
+`createApplicationOperatorStateView` is a data-only dashboard shape for AI-managed work. It keeps the operator surface human-readable by grouping the current goal, progress ratio, active agents, current tasks, human questions, quality gates, performance/cost summary, and history graph references into explicit sections.
+
+Progress, performance, and cost fields carry explicit `known`/`unknown` status values so an empty or partially observed workspace stays distinguishable from a fully measured one.
 
 ## Application Graph Boundary
 

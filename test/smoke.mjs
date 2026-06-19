@@ -13,6 +13,7 @@ import {
   createApplicationGraph,
   createApplicationGraphFromManifestLike,
   createApplicationGraphFromRegistryGraph,
+  createApplicationOperatorStateView,
   createApplicationProof,
   createApplicationRegistryGraph,
   decodeApplicationJsonl,
@@ -205,6 +206,88 @@ assert.ok(sourceRegionAnswer.evidence.some((item) => item.id === 'semantic-impor
 
 const featureMap = createApplicationFeatureMap(compiled);
 assert.strictEqual(featureMap.features[0].id, 'todos');
+
+const operatorView = createApplicationOperatorStateView({
+  id: 'application.operator-state',
+  generatedAt: 3,
+  title: 'Application operator state',
+  goal: {
+    title: 'Ship the visibility lane',
+    summary: 'Keep the operator-facing state view compact and human-readable.'
+  },
+  progressRatio: {
+    completed: 3,
+    total: 5
+  },
+  activeAgents: [
+    {
+      id: 'agent:coordinator',
+      title: 'Coordinator',
+      focus: 'merge admission',
+      status: 'active'
+    },
+    {
+      id: 'agent:worker',
+      title: 'Worker 1',
+      summary: 'Implementing the package surface',
+      status: 'active'
+    }
+  ],
+  currentTasks: [
+    {
+      id: 'task:smoke',
+      title: 'Smoke coverage',
+      owner: '@team/frontier',
+      status: 'in-progress',
+      blockers: ['test command']
+    }
+  ],
+  humanQuestions: [
+    {
+      id: 'question:review',
+      question: 'Approve the operator view shape?',
+      audience: 'coordinator',
+      status: 'needs-human'
+    }
+  ],
+  qualityGates: [
+    {
+      id: 'gate:test',
+      title: 'Package test command',
+      status: 'pass',
+      checks: ['npm --prefix packages/frontier-application run test']
+    }
+  ],
+  performanceSummary: {
+    summary: 'Stable package build',
+    latencyMs: 14,
+    throughputPerMinute: 120
+  },
+  costSummary: {
+    status: 'unknown',
+    reason: 'No billing signal attached to the local smoke run'
+  },
+  historyGraphReferences: [
+    {
+      id: 'history:latest',
+      title: 'Latest graph proof',
+      graphId: 'app.graph',
+      proofHash: 'fnv1a32:deadbeef'
+    }
+  ]
+});
+
+assert.strictEqual(operatorView.kind, 'frontier.application.operator-state-view');
+assert.strictEqual(operatorView.progressRatio.status, 'known');
+assert.strictEqual(operatorView.progressRatio.ratio, 0.6);
+assert.strictEqual(operatorView.costSummary.status, 'unknown');
+assert.ok(operatorView.sections.some((section) => section.title === 'Current Goal'));
+assert.ok(operatorView.sections.some((section) => section.title === 'Active Agents' && section.items.length === 2));
+assert.ok(operatorView.sections.some((section) => section.title === 'Current Tasks' && section.items[0].includes('Smoke coverage')));
+assert.ok(operatorView.sections.some((section) => section.title === 'Human Questions' && section.items[0].includes('Approve the operator view shape?')));
+assert.ok(operatorView.sections.some((section) => section.title === 'Quality Gates' && section.items[0].includes('Package test command')));
+assert.ok(operatorView.sections.some((section) => section.title === 'Performance / Cost' && section.items.some((item) => item.includes('Stable package build'))));
+assert.ok(operatorView.sections.some((section) => section.title === 'History Graph References' && section.items[0].includes('app.graph')));
 
 const registry = createApplicationRegistryGraph(compiled);
 assert.ok(registry.entries.some((entry) => entry.id === 'action:todos.complete'));

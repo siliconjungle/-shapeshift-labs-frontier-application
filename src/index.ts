@@ -26,6 +26,8 @@ export const FRONTIER_APPLICATION_FEATURE_MAP_KIND = 'frontier.application.featu
 export const FRONTIER_APPLICATION_FEATURE_MAP_VERSION = 1;
 export const FRONTIER_APPLICATION_PROOF_KIND = 'frontier.application.proof';
 export const FRONTIER_APPLICATION_PROOF_VERSION = 1;
+export const FRONTIER_APPLICATION_OPERATOR_STATE_VIEW_KIND = 'frontier.application.operator-state-view';
+export const FRONTIER_APPLICATION_OPERATOR_STATE_VIEW_VERSION = 1;
 
 export type FrontierApplicationNodeKind =
   | 'feature'
@@ -514,6 +516,199 @@ export interface FrontierApplicationProof {
   hash: string;
   summary: FrontierApplicationSummary | FrontierApplicationImpact | FrontierApplicationAnswer;
   validation?: FrontierApplicationValidation;
+  metadata?: JsonObject;
+}
+
+export type FrontierApplicationOperatorStateStatus = 'known' | 'unknown';
+export type FrontierApplicationOperatorGateStatus = 'pass' | 'warn' | 'fail' | 'unknown';
+
+export interface FrontierApplicationOperatorGoalInput {
+  title?: string;
+  summary?: string;
+  reason?: string;
+  status?: FrontierApplicationOperatorStateStatus;
+}
+
+export interface FrontierApplicationOperatorGoal {
+  status: FrontierApplicationOperatorStateStatus;
+  title: string;
+  summary?: string;
+  reason?: string;
+}
+
+export interface FrontierApplicationOperatorProgressRatioInput {
+  completed?: number;
+  total?: number;
+  ratio?: number;
+  summary?: string;
+  reason?: string;
+  status?: FrontierApplicationOperatorStateStatus;
+}
+
+export interface FrontierApplicationOperatorProgressRatio {
+  status: FrontierApplicationOperatorStateStatus;
+  completed: number | null;
+  total: number | null;
+  ratio: number | null;
+  summary?: string;
+  reason?: string;
+}
+
+export interface FrontierApplicationOperatorAgentInput {
+  id?: string;
+  title?: string;
+  summary?: string;
+  focus?: string;
+  status?: string;
+}
+
+export interface FrontierApplicationOperatorAgent {
+  id: string;
+  title: string;
+  summary?: string;
+  focus?: string;
+  status: string;
+}
+
+export interface FrontierApplicationOperatorTaskInput {
+  id?: string;
+  title?: string;
+  summary?: string;
+  owner?: string;
+  status?: string;
+  blockers?: readonly string[];
+}
+
+export interface FrontierApplicationOperatorTask {
+  id: string;
+  title: string;
+  summary?: string;
+  owner?: string;
+  status: string;
+  blockers: string[];
+}
+
+export interface FrontierApplicationOperatorQuestionInput {
+  id?: string;
+  question?: string;
+  summary?: string;
+  audience?: string;
+  status?: string;
+}
+
+export interface FrontierApplicationOperatorQuestion {
+  id: string;
+  question: string;
+  summary?: string;
+  audience?: string;
+  status: string;
+}
+
+export interface FrontierApplicationOperatorQualityGateInput {
+  id?: string;
+  title?: string;
+  summary?: string;
+  status?: FrontierApplicationOperatorGateStatus;
+  checks?: readonly string[];
+}
+
+export interface FrontierApplicationOperatorQualityGate {
+  id: string;
+  title: string;
+  summary?: string;
+  status: FrontierApplicationOperatorGateStatus;
+  checks: string[];
+}
+
+export interface FrontierApplicationOperatorPerformanceSummaryInput {
+  summary?: string;
+  latencyMs?: number;
+  throughputPerMinute?: number;
+  status?: FrontierApplicationOperatorStateStatus;
+  reason?: string;
+}
+
+export interface FrontierApplicationOperatorPerformanceSummary {
+  status: FrontierApplicationOperatorStateStatus;
+  summary?: string;
+  latencyMs: number | null;
+  throughputPerMinute: number | null;
+  reason?: string;
+}
+
+export interface FrontierApplicationOperatorCostSummaryInput {
+  summary?: string;
+  spentUsd?: number;
+  budgetUsd?: number;
+  estimatedUsd?: number;
+  status?: FrontierApplicationOperatorStateStatus;
+  reason?: string;
+}
+
+export interface FrontierApplicationOperatorCostSummary {
+  status: FrontierApplicationOperatorStateStatus;
+  summary?: string;
+  spentUsd: number | null;
+  budgetUsd: number | null;
+  estimatedUsd: number | null;
+  reason?: string;
+}
+
+export interface FrontierApplicationOperatorHistoryGraphReferenceInput {
+  id?: string;
+  title?: string;
+  graphId?: string;
+  proofHash?: string;
+  summary?: string;
+}
+
+export interface FrontierApplicationOperatorHistoryGraphReference {
+  id: string;
+  title: string;
+  graphId?: string;
+  proofHash?: string;
+  summary?: string;
+}
+
+export interface FrontierApplicationOperatorStateSection {
+  id: string;
+  title: string;
+  summary?: string;
+  items: string[];
+}
+
+export interface FrontierApplicationOperatorStateViewInput {
+  id?: string;
+  generatedAt?: number;
+  title?: string;
+  goal?: string | FrontierApplicationOperatorGoalInput;
+  progressRatio?: FrontierApplicationOperatorProgressRatioInput;
+  activeAgents?: readonly FrontierApplicationOperatorAgentInput[];
+  currentTasks?: readonly FrontierApplicationOperatorTaskInput[];
+  humanQuestions?: readonly FrontierApplicationOperatorQuestionInput[];
+  qualityGates?: readonly FrontierApplicationOperatorQualityGateInput[];
+  performanceSummary?: FrontierApplicationOperatorPerformanceSummaryInput;
+  costSummary?: FrontierApplicationOperatorCostSummaryInput;
+  historyGraphReferences?: readonly FrontierApplicationOperatorHistoryGraphReferenceInput[];
+  metadata?: unknown;
+}
+
+export interface FrontierApplicationOperatorStateView {
+  kind: typeof FRONTIER_APPLICATION_OPERATOR_STATE_VIEW_KIND;
+  version: typeof FRONTIER_APPLICATION_OPERATOR_STATE_VIEW_VERSION;
+  id: string;
+  generatedAt?: number;
+  title: string;
+  goal: FrontierApplicationOperatorGoal;
+  progressRatio: FrontierApplicationOperatorProgressRatio;
+  activeAgents: FrontierApplicationOperatorAgent[];
+  currentTasks: FrontierApplicationOperatorTask[];
+  humanQuestions: FrontierApplicationOperatorQuestion[];
+  qualityGates: FrontierApplicationOperatorQualityGate[];
+  performanceSummary: FrontierApplicationOperatorPerformanceSummary;
+  costSummary: FrontierApplicationOperatorCostSummary;
+  historyGraphReferences: FrontierApplicationOperatorHistoryGraphReference[];
+  sections: FrontierApplicationOperatorStateSection[];
   metadata?: JsonObject;
 }
 
@@ -1068,6 +1263,86 @@ export function createApplicationProof(input: FrontierApplicationGraph | Frontie
   };
 }
 
+export function createApplicationOperatorStateView(input: FrontierApplicationOperatorStateViewInput = {}): FrontierApplicationOperatorStateView {
+  const activeAgents = (input.activeAgents ?? []).map(normalizeOperatorAgent).sort(compareOperatorAgent);
+  const currentTasks = (input.currentTasks ?? []).map(normalizeOperatorTask).sort(compareOperatorTask);
+  const humanQuestions = (input.humanQuestions ?? []).map(normalizeOperatorQuestion).sort(compareOperatorQuestion);
+  const qualityGates = (input.qualityGates ?? []).map(normalizeOperatorQualityGate).sort(compareOperatorQualityGate);
+  const historyGraphReferences = (input.historyGraphReferences ?? []).map(normalizeOperatorHistoryGraphReference).sort(compareOperatorHistoryGraphReference);
+  const goal = normalizeOperatorGoal(input.goal);
+  const progressRatio = normalizeOperatorProgressRatio(input.progressRatio);
+  const performanceSummary = normalizeOperatorPerformanceSummary(input.performanceSummary);
+  const costSummary = normalizeOperatorCostSummary(input.costSummary);
+
+  return {
+    kind: FRONTIER_APPLICATION_OPERATOR_STATE_VIEW_KIND,
+    version: FRONTIER_APPLICATION_OPERATOR_STATE_VIEW_VERSION,
+    id: normalizeId(input.id ?? 'application.operator-state', 'application operator state view id'),
+    ...(input.generatedAt !== undefined ? { generatedAt: input.generatedAt } : {}),
+    title: input.title ?? 'Application operator state',
+    goal,
+    progressRatio,
+    activeAgents,
+    currentTasks,
+    humanQuestions,
+    qualityGates,
+    performanceSummary,
+    costSummary,
+    historyGraphReferences,
+    sections: [
+      {
+        id: 'goal',
+        title: 'Current Goal',
+        summary: goal.status === 'known' ? goal.summary ?? goal.title : goal.reason ?? goal.title,
+        items: goal.status === 'known' ? [goal.title, ...(goal.summary ? [goal.summary] : [])] : [goal.title]
+      },
+      {
+        id: 'progress',
+        title: 'Progress',
+        summary: progressSummaryText(progressRatio),
+        items: [progressSummaryText(progressRatio)]
+      },
+      {
+        id: 'active-agents',
+        title: 'Active Agents',
+        summary: activeAgents.length ? activeAgents.length + ' active agent' + (activeAgents.length === 1 ? '' : 's') : 'No active agents',
+        items: activeAgents.map(formatOperatorAgent)
+      },
+      {
+        id: 'current-tasks',
+        title: 'Current Tasks',
+        summary: currentTasks.length ? currentTasks.length + ' current task' + (currentTasks.length === 1 ? '' : 's') : 'No current tasks',
+        items: currentTasks.map(formatOperatorTask)
+      },
+      {
+        id: 'human-questions',
+        title: 'Human Questions',
+        summary: humanQuestions.length ? humanQuestions.length + ' human question' + (humanQuestions.length === 1 ? '' : 's') : 'No human questions',
+        items: humanQuestions.map(formatOperatorQuestion)
+      },
+      {
+        id: 'quality-gates',
+        title: 'Quality Gates',
+        summary: qualityGates.length ? qualityGates.length + ' quality gate' + (qualityGates.length === 1 ? '' : 's') : 'No quality gates',
+        items: qualityGates.map(formatOperatorQualityGate)
+      },
+      {
+        id: 'performance-cost',
+        title: 'Performance / Cost',
+        summary: compactStrings([performanceSummaryText(performanceSummary), costSummaryText(costSummary)]).join(' | '),
+        items: compactStrings([performanceSummaryText(performanceSummary), costSummaryText(costSummary)])
+      },
+      {
+        id: 'history-graphs',
+        title: 'History Graph References',
+        summary: historyGraphReferences.length ? historyGraphReferences.length + ' history graph reference' + (historyGraphReferences.length === 1 ? '' : 's') : 'No history graph references',
+        items: historyGraphReferences.map(formatOperatorHistoryGraphReference)
+      }
+    ],
+    ...optionalObject('metadata', input.metadata)
+  };
+}
+
 function normalizeNode(input: FrontierApplicationNodeInput): FrontierApplicationNode {
   const kind = input.kind ?? inferNodeKind(input.id);
   const states = normalizePathValues(input.states);
@@ -1146,6 +1421,171 @@ function normalizeEvidence(input: FrontierApplicationEvidenceInput, index: numbe
     ...(input.timestamp !== undefined ? { timestamp: normalizeTimestamp(input.timestamp) } : {}),
     ...optionalObject('metadata', input.metadata)
   };
+}
+
+function normalizeOperatorGoal(input: string | FrontierApplicationOperatorGoalInput | undefined): FrontierApplicationOperatorGoal {
+  if (typeof input === 'string') {
+    return {
+      status: 'known',
+      title: input
+    };
+  }
+  if (!input) {
+    return {
+      status: 'unknown',
+      title: 'Goal not set',
+      summary: 'No current goal has been recorded yet.',
+      reason: 'goal missing'
+    };
+  }
+  const status = input.status ?? (input.title || input.summary ? 'known' : 'unknown');
+  return {
+    status,
+    title: input.title ?? input.summary ?? 'Goal not set',
+    ...optionalString('summary', input.summary),
+    ...optionalString('reason', input.reason)
+  };
+}
+
+function normalizeOperatorProgressRatio(input: FrontierApplicationOperatorProgressRatioInput | undefined): FrontierApplicationOperatorProgressRatio {
+  const completed = readNumber(input?.completed);
+  const total = readNumber(input?.total);
+  const ratio = readNumber(input?.ratio);
+  const derivedRatio = completed !== undefined && total !== undefined && total > 0 ? completed / total : undefined;
+  const status = input?.status ?? (derivedRatio !== undefined || ratio !== undefined ? 'known' : 'unknown');
+  const resolvedRatio = derivedRatio ?? ratio;
+  return {
+    status,
+    completed: completed ?? null,
+    total: total ?? null,
+    ratio: resolvedRatio !== undefined && Number.isFinite(resolvedRatio) ? resolvedRatio : null,
+    ...optionalString('summary', input?.summary ?? (status === 'known' && completed !== undefined && total !== undefined ? completed + ' of ' + total + ' complete' : undefined)),
+    ...optionalString('reason', input?.reason)
+  };
+}
+
+function normalizeOperatorAgent(input: FrontierApplicationOperatorAgentInput, index: number): FrontierApplicationOperatorAgent {
+  const id = normalizeId(input.id ?? 'agent:' + index, 'application operator agent id');
+  return {
+    id,
+    title: input.title ?? id,
+    ...optionalString('summary', input.summary),
+    ...optionalString('focus', input.focus),
+    status: input.status ?? 'unknown'
+  };
+}
+
+function normalizeOperatorTask(input: FrontierApplicationOperatorTaskInput, index: number): FrontierApplicationOperatorTask {
+  const id = normalizeId(input.id ?? 'task:' + index, 'application operator task id');
+  return {
+    id,
+    title: input.title ?? id,
+    ...optionalString('summary', input.summary),
+    ...optionalString('owner', input.owner),
+    status: input.status ?? 'unknown',
+    blockers: uniqueStrings(input.blockers)
+  };
+}
+
+function normalizeOperatorQuestion(input: FrontierApplicationOperatorQuestionInput, index: number): FrontierApplicationOperatorQuestion {
+  const id = normalizeId(input.id ?? 'question:' + index, 'application operator question id');
+  return {
+    id,
+    question: input.question ?? input.summary ?? id,
+    ...optionalString('summary', input.summary),
+    ...optionalString('audience', input.audience),
+    status: input.status ?? 'unknown'
+  };
+}
+
+function normalizeOperatorQualityGate(input: FrontierApplicationOperatorQualityGateInput, index: number): FrontierApplicationOperatorQualityGate {
+  const id = normalizeId(input.id ?? 'gate:' + index, 'application operator quality gate id');
+  return {
+    id,
+    title: input.title ?? id,
+    ...optionalString('summary', input.summary),
+    status: input.status ?? 'unknown',
+    checks: uniqueStrings(input.checks)
+  };
+}
+
+function normalizeOperatorPerformanceSummary(input: FrontierApplicationOperatorPerformanceSummaryInput | undefined): FrontierApplicationOperatorPerformanceSummary {
+  const latencyMs = readNumber(input?.latencyMs);
+  const throughputPerMinute = readNumber(input?.throughputPerMinute);
+  const status = input?.status ?? (input?.summary || latencyMs !== undefined || throughputPerMinute !== undefined ? 'known' : 'unknown');
+  return {
+    status,
+    ...optionalString('summary', input?.summary),
+    latencyMs: latencyMs ?? null,
+    throughputPerMinute: throughputPerMinute ?? null,
+    ...optionalString('reason', input?.reason)
+  };
+}
+
+function normalizeOperatorCostSummary(input: FrontierApplicationOperatorCostSummaryInput | undefined): FrontierApplicationOperatorCostSummary {
+  const spentUsd = readNumber(input?.spentUsd);
+  const budgetUsd = readNumber(input?.budgetUsd);
+  const estimatedUsd = readNumber(input?.estimatedUsd);
+  const status = input?.status ?? (input?.summary || spentUsd !== undefined || budgetUsd !== undefined || estimatedUsd !== undefined ? 'known' : 'unknown');
+  return {
+    status,
+    ...optionalString('summary', input?.summary),
+    spentUsd: spentUsd ?? null,
+    budgetUsd: budgetUsd ?? null,
+    estimatedUsd: estimatedUsd ?? null,
+    ...optionalString('reason', input?.reason)
+  };
+}
+
+function normalizeOperatorHistoryGraphReference(input: FrontierApplicationOperatorHistoryGraphReferenceInput, index: number): FrontierApplicationOperatorHistoryGraphReference {
+  const id = normalizeId(input.id ?? 'history-graph:' + index, 'application operator history graph reference id');
+  return {
+    id,
+    title: input.title ?? input.graphId ?? id,
+    ...optionalString('graphId', input.graphId),
+    ...optionalString('proofHash', input.proofHash),
+    ...optionalString('summary', input.summary)
+  };
+}
+
+function formatOperatorAgent(agent: FrontierApplicationOperatorAgent): string {
+  return compactStrings([agent.title, agent.focus, agent.summary, agent.status]).join(' · ');
+}
+
+function formatOperatorTask(task: FrontierApplicationOperatorTask): string {
+  return compactStrings([task.title, task.owner, task.summary, task.status, task.blockers.length ? task.blockers.join(', ') : undefined]).join(' · ');
+}
+
+function formatOperatorQuestion(question: FrontierApplicationOperatorQuestion): string {
+  return compactStrings([question.question, question.audience, question.summary, question.status]).join(' · ');
+}
+
+function formatOperatorQualityGate(gate: FrontierApplicationOperatorQualityGate): string {
+  return compactStrings([gate.title, gate.status, gate.summary, gate.checks.length ? gate.checks.join(', ') : undefined]).join(' · ');
+}
+
+function formatOperatorHistoryGraphReference(reference: FrontierApplicationOperatorHistoryGraphReference): string {
+  return compactStrings([reference.title, reference.graphId, reference.proofHash, reference.summary]).join(' · ');
+}
+
+function progressSummaryText(progress: FrontierApplicationOperatorProgressRatio): string {
+  if (progress.status === 'unknown') return progress.reason ?? progress.summary ?? 'Progress not yet reported';
+  if (progress.summary) return progress.summary;
+  if (progress.ratio !== null) return Math.round(progress.ratio * 100) + '% complete';
+  if (progress.completed !== null && progress.total !== null) return progress.completed + ' of ' + progress.total + ' complete';
+  return 'Progress reported';
+}
+
+function performanceSummaryText(performance: FrontierApplicationOperatorPerformanceSummary): string {
+  if (performance.status === 'unknown') return performance.reason ?? performance.summary ?? 'Performance not yet reported';
+  const parts = compactStrings([performance.summary, performance.latencyMs !== null ? 'latency ' + performance.latencyMs + 'ms' : undefined, performance.throughputPerMinute !== null ? performance.throughputPerMinute + '/min' : undefined]);
+  return parts.length ? parts.join(' · ') : 'Performance reported';
+}
+
+function costSummaryText(cost: FrontierApplicationOperatorCostSummary): string {
+  if (cost.status === 'unknown') return cost.reason ?? cost.summary ?? 'Cost not yet reported';
+  const parts = compactStrings([cost.summary, cost.spentUsd !== null ? '$' + cost.spentUsd.toFixed(2) + ' spent' : undefined, cost.budgetUsd !== null ? '$' + cost.budgetUsd.toFixed(2) + ' budget' : undefined, cost.estimatedUsd !== null ? '$' + cost.estimatedUsd.toFixed(2) + ' estimated' : undefined]);
+  return parts.length ? parts.join(' · ') : 'Cost reported';
 }
 
 function deriveEdges(nodes: readonly FrontierApplicationNode[]): FrontierApplicationEdge[] {
@@ -1729,6 +2169,10 @@ function uniqueStrings(values: readonly (string | undefined | null)[] | undefine
   return Array.from(new Set((values ?? []).filter((value): value is string => typeof value === 'string' && value.length > 0))).sort();
 }
 
+function compactStrings(values: readonly (string | undefined | null | false)[]): string[] {
+  return values.filter((value): value is string => typeof value === 'string' && value.length > 0);
+}
+
 function compareNode(left: FrontierApplicationNode, right: FrontierApplicationNode): number {
   return left.id.localeCompare(right.id);
 }
@@ -1743,6 +2187,26 @@ function compareEvidence(left: FrontierApplicationEvidence, right: FrontierAppli
 
 function compareReason(left: FrontierApplicationImpactReason, right: FrontierApplicationImpactReason): number {
   return left.nodeId.localeCompare(right.nodeId) || left.kind.localeCompare(right.kind) || (left.via ?? '').localeCompare(right.via ?? '');
+}
+
+function compareOperatorAgent(left: FrontierApplicationOperatorAgent, right: FrontierApplicationOperatorAgent): number {
+  return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+}
+
+function compareOperatorTask(left: FrontierApplicationOperatorTask, right: FrontierApplicationOperatorTask): number {
+  return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+}
+
+function compareOperatorQuestion(left: FrontierApplicationOperatorQuestion, right: FrontierApplicationOperatorQuestion): number {
+  return left.question.localeCompare(right.question) || left.id.localeCompare(right.id);
+}
+
+function compareOperatorQualityGate(left: FrontierApplicationOperatorQualityGate, right: FrontierApplicationOperatorQualityGate): number {
+  return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+}
+
+function compareOperatorHistoryGraphReference(left: FrontierApplicationOperatorHistoryGraphReference, right: FrontierApplicationOperatorHistoryGraphReference): number {
+  return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
 }
 
 function isApplicationGraph(value: unknown): value is FrontierApplicationGraph {
